@@ -8,12 +8,13 @@ const rateLimit = require('express-rate-limit');
 const logger = require('./utils/logger');
 const { attachSocket } = require('./services/socket');
 
-const authRouter   = require('./routes/auth');
+const authRouter = require('./routes/auth');
 const alertsRouter = require('./routes/alerts');
-const usersRouter  = require('./routes/users');
-const adminRouter  = require('./routes/admin');
+const usersRouter = require('./routes/users');
+const adminRouter = require('./routes/admin');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ── Security & parsing ────────────────────────────────────────────────────
 app.use(helmet());
@@ -24,22 +25,24 @@ app.use(express.json({ limit: '100kb' }));
 const globalLimit = rateLimit({
   windowMs: 60_000,
   max: 120,
+  trustProxy: true,
   standardHeaders: true,
   message: { error: 'Too many requests — slow down.' },
 });
 const authLimit = rateLimit({
   windowMs: 15 * 60_000,
   max: 20,
+  trustProxy: true,
   message: { error: 'Too many auth attempts — try again in 15 minutes.' },
 });
 app.use(globalLimit);
 app.use('/api/auth', authLimit);
 
 // ── Routes ────────────────────────────────────────────────────────────────
-app.use('/api/auth',   authRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/alerts', alertsRouter);
-app.use('/api/users',  usersRouter);
-app.use('/api/admin',  adminRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/admin', adminRouter);
 
 // ── Health check ──────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>
@@ -62,7 +65,9 @@ app.set('io', io);
 
 const PORT = parseInt(process.env.PORT) || 4000;
 server.listen(PORT, () => {
-  logger.info(`🚨  SafeAlert backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  logger.info(
+    `🚨  SafeAlert backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`
+  );
 });
 
 module.exports = { app, server }; // for testing
